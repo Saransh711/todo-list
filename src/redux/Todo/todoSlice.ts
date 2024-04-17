@@ -1,63 +1,39 @@
 import {createSlice} from '@reduxjs/toolkit';
-// import {removeStoredData} from '../../services/storageHelper';
-import {User} from './types';
+import {FormDataWithDate} from './Types';
+
 interface initialAuthStateProps {
-  user: User | null;
-  isLoading: boolean;
-  isFetchingData: boolean;
-  error: null;
-  otp: string[];
-  accessToken: '';
-  email: '';
+  user: FormDataWithDate[];
 }
 const initialAuthState: initialAuthStateProps = {
-  user: null,
-  isLoading: true,
-  isFetchingData: false,
-  error: null,
-  otp: ['', '', '', '', '', ''],
-  accessToken: '',
-  email: '',
+  user: [],
 };
 export const authSlice = createSlice({
   name: 'auth',
   initialState: initialAuthState,
   reducers: {
-    setUser: (state, action) => {
+    addTodo: (state, action: {type: string; payload: FormDataWithDate}) => {
+      state.user = [...state.user, action.payload];
+    },
+    deleteTodo: (state, action: {type: string; payload: number}) => {
+      state.user = state.user.filter((_, index) => index !== action.payload);
+    },
+    editTodo: (
+      state,
+      action: {type: string; payload: {index: number; todo: FormDataWithDate}},
+    ) => {
+      const {index, todo} = action.payload;
+      state.user[index] = todo;
+    },
+
+    setInitialData: (
+      state,
+      action: {type: string; payload: FormDataWithDate[]},
+    ) => {
       state.user = action.payload;
-      state.isFetchingData = false;
-    },
-    setShowSplash: state => {
-      state.isLoading = false;
-    },
-    setIsFetchingData: (state, action) => {
-      state.isFetchingData = action.payload;
-    },
-    setOTP: (state, action) => {
-      state.otp = action.payload;
-    },
-    setAccessToken: (state, action) => {
-      state.accessToken = action.payload;
-      state.isFetchingData = false;
-      state.isLoading = false;
-    },
-    setEmail: (state, action) => {
-      state.email = action.payload;
-    },
-    removeToken: state => {
-      // removeStoredData('access_token');
-      state.accessToken = '';
     },
   },
 });
 
-export const {
-  setUser,
-  setOTP,
-  setAccessToken,
-  removeToken,
-  setEmail,
-  setShowSplash,
-  setIsFetchingData,
-} = authSlice.actions;
+export const {addTodo, deleteTodo, editTodo, setInitialData} =
+  authSlice.actions;
 export default authSlice.reducer;

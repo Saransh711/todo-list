@@ -1,145 +1,217 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
+import {Controller, useForm} from 'react-hook-form';
 import {
-  View,
+  FlatList,
+  Image,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  StyleSheet,
+  View,
 } from 'react-native';
+import DatePicker from 'react-native-date-picker';
+import {useAppDispatch, useAppSelector} from '../hooks/ReduxHooks';
+import {
+  addList,
+  deleteList,
+  editList,
+  initializeApp,
+} from '../redux/Todo/TodoActions';
+import {stylesTodo} from './Styles';
+import {FormData1, FormDataWithDate} from '../redux/Todo/Types';
+import Notifications from '../service/Notification';
 
 const Home = () => {
-  const [task, setTask] = useState('');
-  const [tasks, setTasks] = useState([]);
+  const dispatch = useAppDispatch();
+  const {user} = useAppSelector(state => state.todo);
   const [editIndex, setEditIndex] = useState(-1);
+  const [date, setDate] = useState(new Date());
+  const [dateText, setDateText] = useState<Date | null>(new Date());
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: {errors},
+  } = useForm<FormData1>({
+    defaultValues: {
+      title: '',
+      description: '',
+    },
+  });
+  useEffect(() => {
+    dispatch(initializeApp());
+  }, []);
 
-  const handleAddTask = () => {
-    // if (task) {
-    //   if (editIndex !== -1) {
-    //     // Edit existing task
-    //     const updatedTasks = [...tasks];
-    //     updatedTasks[editIndex] = task;
-    //     setTasks(updatedTasks);
-    //     setEditIndex(-1);
-    //   } else {
-    //     // Add new task
-    //     setTasks([...tasks, task]);
-    //   }
-    //   setTask('');
-    // }
+  const handleAddTask = async (data: FormData1) => {
+    if (dateText) {
+      const formDataWithDate: FormDataWithDate = {
+        title: data.title,
+        description: data.description,
+        date: dateText,
+      };
+
+      if (editIndex !== -1) {
+        Notifications.schduleNotification(
+          new Date(Date.now() + 2 * 1000),
+          'You have edited Todo',
+          'Edit Todo',
+        );
+        await dispatch(editList({index: editIndex, todo: formDataWithDate}));
+      } else {
+        Notifications.schduleNotification(
+          new Date(Date.now() + 2 * 1000),
+          'You have added Todo',
+          'Added Todo',
+        );
+        await dispatch(addList(formDataWithDate));
+      }
+      reset({
+        title: '',
+        description: '',
+      });
+      setDateText(new Date());
+      setEditIndex(-1);
+    } else {
+      console.log('no');
+    }
   };
 
   const handleEditTask = (index: number) => {
-    // const taskToEdit = tasks[index];
-    // setTask(taskToEdit);
-    // setEditIndex(index);
+    const taskToEdit = user[index];
+    reset({
+      title: taskToEdit.title,
+      description: taskToEdit.description,
+    });
+    setDateText(taskToEdit.date);
+    setEditIndex(index);
   };
 
-  const handleDeleteTask = (index: number) => {
-    // const updatedTasks = [...tasks];
-    // updatedTasks.splice(index, 1);
-    // setTasks(updatedTasks);
+  const handleDeleteTask = async (index: number) => {
+    await dispatch(deleteList(index));
+    Notifications.schduleNotification(
+      new Date(Date.now() + 2 * 1000),
+      'You have Deleted Todo',
+      'Deleted Todo',
+    );
+    reset({
+      title: '',
+      description: '',
+    });
+    setDateText(new Date());
+    setEditIndex(-1);
   };
 
-  const renderItem = ({item, index}: {item: any; index: number}) => (
-    <View style={styles.task}>
-      <Text style={styles.itemList}>{item}</Text>
-      <View style={styles.taskButtons}>
+  const handleConfirmDate = (selectedDate: Date) => {
+    setDateText(selectedDate);
+    setIsDatePickerVisible(false);
+  };
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: FormDataWithDate;
+    index: number;
+  }) => (
+    <View style={stylesTodo.task}>
+      <Text style={stylesTodo.itemList}>{item.title}</Text>
+      <Text style={stylesTodo.itemList}>{item.description}</Text>
+      <View style={stylesTodo.taskButtons}>
         <TouchableOpacity onPress={() => handleEditTask(index)}>
-          <Text style={styles.editButton}>Edit</Text>
+          <Text style={stylesTodo.editButton}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleDeleteTask(index)}>
-          <Text style={styles.deleteButton}>Delete</Text>
+          <Text style={stylesTodo.deleteButton}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>To Do App</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter task"
-        value={task}
-        onChangeText={text => setTask(text)}
-      />
-      <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
-        <Text style={styles.addButtonText}>
+    <View style={stylesTodo.container}>
+      <Text style={stylesTodo.title}>To Do App</Text>
+      <View>
+        <Controller
+          control={control}
+          render={({field: {onChange, onBlur, value}}) => (
+            <View>
+              <TextInput
+                placeholder="Enter Title"
+                placeholderTextColor={'grey'}
+                style={stylesTodo.input}
+                onBlur={onBlur}
+                onChangeText={value => onChange(value)}
+                value={value}
+              />
+              {errors.title && (
+                <Text style={{color: 'red'}}>This is required.</Text>
+              )}
+            </View>
+          )}
+          name="title"
+          rules={{required: true}}
+        />
+        <Controller
+          control={control}
+          render={({field: {onChange, onBlur, value}}) => (
+            <View>
+              <TextInput
+                placeholder="Enter Description"
+                placeholderTextColor={'grey'}
+                style={stylesTodo.input}
+                onBlur={onBlur}
+                onChangeText={value => onChange(value)}
+                value={value}
+              />
+              {errors.description && (
+                <Text style={{color: 'red'}}>This is required.</Text>
+              )}
+            </View>
+          )}
+          name="description"
+          rules={{required: true}}
+        />
+        <TouchableOpacity onPress={() => setIsDatePickerVisible(true)}>
+          <Text style={stylesTodo.input}>
+            {dateText ? dateText.toLocaleString() : 'Select Date/Time'}
+          </Text>
+        </TouchableOpacity>
+        {isDatePickerVisible && (
+          <DatePicker
+            modal
+            open={isDatePickerVisible}
+            textColor="black"
+            mode="datetime"
+            date={date}
+            onDateChange={setDate}
+            onConfirm={handleConfirmDate}
+            onCancel={() => setIsDatePickerVisible(false)}
+            minimumDate={new Date()}
+          />
+        )}
+      </View>
+
+      <TouchableOpacity
+        style={stylesTodo.addButton}
+        onPress={handleSubmit(handleAddTask)}>
+        <Text style={stylesTodo.addButtonText}>
           {editIndex !== -1 ? 'Update Task' : 'Add Task'}
         </Text>
       </TouchableOpacity>
-      <FlatList
-        data={tasks}
-        renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
-      />
+      {user.length === 0 ? (
+        <View style={stylesTodo.emptyListContainer}>
+          <Text style={stylesTodo.emptyListText}>
+            Your to-do list is empty!
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={user}
+          renderItem={renderItem}
+          keyExtractor={(_, index) => index.toString()}
+        />
+      )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-    padding: 40,
-    marginTop: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  heading: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    marginBottom: 7,
-    color: 'green',
-  },
-  input: {
-    borderWidth: 3,
-    borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 10,
-    fontSize: 18,
-  },
-  addButton: {
-    backgroundColor: 'green',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10,
-  },
-  addButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 18,
-  },
-  task: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-    fontSize: 18,
-  },
-  itemList: {
-    fontSize: 19,
-  },
-  taskButtons: {
-    flexDirection: 'row',
-  },
-  editButton: {
-    marginRight: 10,
-    color: 'green',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  deleteButton: {
-    color: 'red',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-});
 
 export default Home;

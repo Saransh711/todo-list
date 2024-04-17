@@ -1,28 +1,44 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from 'react-native-encrypted-storage';
 
 export const setStoreData = async (key: string, value: string) => {
-  return await AsyncStorage.setItem(key, value);
+  try {
+    await AsyncStorage.setItem(key, value);
+  } catch (error) {
+    console.log('AsyncStorage set error: ');
+  }
+};
+export const initializeData = async () => {
+  try {
+    const initialDataString = await getStoreData('todoList');
+    if (initialDataString) {
+      const initialData = JSON.parse(initialDataString);
+      return initialData;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.log('Error initializing data: ', error);
+    return [];
+  }
 };
 
 export const getStoreData = async (key: string) => {
-  return await AsyncStorage.getItem(key);
-};
-export const removeStoredData = async (name: string) => {
   try {
-    await AsyncStorage.removeItem(name);
-  } catch (error: any) {
-    console.log('AsyncStorage remove error: ' + error.message);
+    const value = await AsyncStorage.getItem(key);
+    if (value !== null) {
+      return value;
+    }
+    return null;
+  } catch (error) {
+    console.log('AsyncStorage get error: ');
+    return null;
   }
 };
-export const isSignedIn = () =>
-  new Promise((resolve, reject) => {
-    AsyncStorage.getItem('access_token')
-      .then((res: unknown) => {
-        if (res !== null) {
-          resolve(res);
-        } else {
-          resolve(false);
-        }
-      })
-      .catch((err: any) => reject(err));
-  });
+
+export const removeStoredData = async (key: string) => {
+  try {
+    await AsyncStorage.removeItem(key);
+  } catch (error) {
+    console.log('AsyncStorage remove error: ');
+  }
+};
